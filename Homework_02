@@ -1,0 +1,82 @@
+import time
+import random
+from datetime import date, timedelta
+
+
+class RandomPESEL(object):
+    __CHECKSUM_WEIGHTS = [1, 3, 7, 9, 1, 3, 7, 9, 1, 3]
+    
+    random_suffixes = []
+    date_to_index = {}
+    start_time = 0
+    end_time = 0
+
+    def __init__(self):
+      for i in range(0,9999,2):
+        self.random_suffixes.append(i)
+      random.shuffle(self.random_suffixes)
+      self.start_time = time.mktime(time.strptime('1/1/1800', '%m/%d/%Y'))
+      self.end_time = time.mktime(time.strptime('12/31/2299', '%m/%d/%Y'))
+
+    def generate(self, gender=None):
+        gender = gender.upper() if gender is not None else random.choice(['M', 'F'])
+        if gender not in ['M', 'F']:
+            raise ValueError('gender should contain one of two values: M - male, F - female')
+
+        birth_date = self.__get_random_birth_date()
+        month = birth_date.tm_mon
+        if 1800 <= birth_date.tm_year <= 1899:
+            month += 80
+        elif 2000 <= birth_date.tm_year <= 2099:
+            month += 20
+        elif 2100 <= birth_date.tm_year <= 2199:
+            month += 40
+        elif 2200 <= birth_date.tm_year <= 2299:
+            month += 60
+
+        pesel = '{:02d}{:02d}{:02d}'.format(birth_date.tm_year%100,month,birth_date.tm_mday)
+        suffix_index = 0
+        if pesel in self.date_to_index:
+          suffix_index = self.date_to_index[pesel]  
+        else:
+          suffix_index = random.randint(0,len(self.random_suffixes)-1)
+        self.date_to_index[pesel] = (suffix_index + 1) % len(self.random_suffixes)
+        
+        suffix = self.random_suffixes[suffix_index]
+        if gender == 'M':
+          suffix += 1
+        pesel += str(suffix).zfill(4)
+        pesel += str(self.__get_checksum(pesel))
+        return pesel
+
+    @classmethod
+    def __get_checksum(cls, pesel):
+        checksum = 0
+        for index, value in enumerate(pesel):
+            checksum += cls.__CHECKSUM_WEIGHTS[index] * int(value)
+        checksum = (10 - (checksum % 10)) % 10;
+        return checksum
+
+    def __get_random_birth_date(self):
+        r = self.start_time + random.random() * (self.end_time - self.start_time)
+        return time.localtime(r)
+
+    def numerology(self, pesel):
+      number = int(pesel)
+      while number > 9:
+
+        sum = 0
+        while number > 0:
+          sum += number %10
+          number //= 10
+        number = sum
+      return number
+            
+generator = RandomPESEL()
+pesel = generator.generate()
+number = generator.numerology(pesel)
+print(pesel,'   ',number)
+for i in range(38000000):
+  pesel = generator.generate()
+  number = generator.numerology(pesel)
+print('done')
